@@ -1,0 +1,183 @@
+---
+title: "Homework 4"
+author: "Meredith Tucker: mltucker2001"
+date: "3/2/20"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Chick weights
+
+The `ChickWeight` data set is part of the base package `datasets`. See `?ChickWeight` for details on the data.
+For all of the questions use `dplyr` functions with the pipe `%>%` whenever possible.
+
+
+**Submission instructions**: Create a folder named `ds202_hw4`, and name the RMarkDown file including your solutions `hw4.Rmd` under this folder. For the submission, create a GitHub repository named `ds202_hw4` under your GitHub account, and push both `hw4.Rmd` and the knitted `hw4.html` before the deadline. I will assume you use the same GitHub username as for your HW3 submission. The latest version of your homework appearing on GitHub before the deadline is graded. *It is crucial to follow the exact folder structure and file names*. This homework is **due on March 4** before class.
+
+1. Get a frequency breakdown of the number of chicks, their average weight and the standard deviation of the weights in each of the diets at the start of the study. Store the resulting data frame in a variable named `weight0` and print.<br>
+
+```{r}
+library(dplyr)
+library(ggplot2)
+weight0 <- ChickWeight %>%
+  filter(Time == 0) %>%
+  group_by(Diet) %>%
+  summarize( Number = n(), ave_weight = mean(weight), sd_weight = sd(weight))
+
+print(weight0)
+
+```
+
+
+<!-- 5 pts of extra credit: construct a ggplot that shows average weights by diet with an interval (shown as a line) of +- the standard deviation around the averages. -->
+```{r}
+ggplot(weight0, aes(x=Diet, y=ave_weight)) + geom_point() + geom_errorbar(aes(ymin = ave_weight-sd_weight, ymax = ave_weight+sd_weight)) + xlab('Diet') + ylab('Average Weight') + ggtitle('Average Weight by Diet')
+```
+
+
+
+2. Each chick should have twelve weight measurements. Use the `dplyr` package to identify how many measurements are there for each chick. Extract a subset of the data for all chicks with complete information, name the data set `complete`, and print the first 3 rows. (Hint: you might want to use mutate to introduce a helper variable consisting of the number of observations)
+
+```{r}
+
+complete <- ChickWeight %>% 
+  group_by(Chick) %>% 
+  mutate(Num = n()) %>%
+  ungroup() %>% 
+  filter(Num==12)
+
+head(complete, n=3)
+
+```
+
+
+3. In the complete data set introduce a new variable that measures the current weight difference compared to day 0. Name this variable  `weightgain` and print the first 3 rows of the new data frame.
+
+```{r}
+
+complete <- complete %>% 
+  group_by(Chick) %>% 
+  mutate(weightgain = (weight - weight[Time==0]))
+
+head(complete, n=3)
+
+```
+
+
+
+4. Use `{ggplot2}` to create side-by-side boxplots of `weightgain` by `Diet` for day 21. Change the order of the categories in the Diet variable such that the boxplots are ordered by median `weightgain`, and the lower limit of the y axis should be 0. Describe the relationship in 2-3 sentences. 
+
+
+```{r}
+weightdiet <- filter(complete, Time==21) %>%
+  ggplot(aes(x= reorder(Diet, weightgain, FUN=median), y=weightgain)) + geom_boxplot() + xlab('Diet') + ylab('WeightGain')+ ggtitle('WeightGain by Diet (Day 21)') + coord_cartesian(ylim = c(0, 350))
+
+weightdiet
+```
+
+The diet that on average had the highest weight gain on day 21 was Diet 3. The diet with the lowest weight gain on day 21 was diet 1. Diet number 4 had the least variation in the weight gain on this day. 
+
+
+
+5. Answer each of the following questions using numerical and graphical summary. Also explain what you found: (a) Which chick gained the most weight and which gained the least weight? (b) What diets were they on?
+
+
+```{r}
+most <- complete %>% 
+  filter(Time==21) %>% 
+  arrange(desc(weightgain)) %>% 
+  head(1)
+most
+
+```
+
+```{r}
+least <- complete %>% 
+  filter(Time==21) %>% 
+  arrange(weightgain) %>% 
+  head(1)
+least
+```
+
+```{r}
+complete %>% 
+  filter(Time==21) %>% 
+  ggplot(aes(x=Chick, y=weightgain)) + geom_point() + ylab('Weightgain') + ggtitle('Final Weightgain by Chick')
+
+```
+```{r}
+complete %>% 
+  filter(Time==21) %>% 
+  ggplot(aes(x=Diet, y=weightgain)) + geom_point() + ylab('Weightgain') + ggtitle('Weightgain by Diet')
+```
+
+
+The Chick that gained the most weight was chick 35. Chick 35 gained 335 and was on diet 3. The Chick that gained the least weight was chick 24. Chick 24 gained 32 and was on diet 2. 
+
+
+
+6. For the chicks with the least and the most weight at time 0, plot their growth trajectories over time. </br>
+
+```{r}
+complete %>% 
+  filter(Time==0) %>% 
+  arrange(weight) %>% 
+  head(1)
+```
+
+```{r}
+complete %>% 
+  filter(Time==0) %>% 
+  arrange(desc(weight)) %>% 
+  head(1)
+```
+```{r}
+complete %>%
+  filter(Chick == 27|  Chick == 3) %>% 
+  ggplot(aes(x=Time, y=weight, group=Chick, color=Chick)) + geom_line() + geom_point() + ggtitle('Weight over Time')
+```
+
+
+
+
+
+7. Add to the previous plot the average growth trajectory for all chicks (calculated as the mean weight for each chick at each time). How do the trajectories compare?
+
+```{r}
+
+thing1 <- complete %>%
+  group_by(Time) %>% 
+  summarize(ave = mean(weight))
+
+
+thing3 <- complete %>% 
+  group_by(Chick) %>% 
+  filter(Chick ==27 | Chick == 3) %>% 
+  ggplot() + geom_line(aes(x=Time, y=weight, group=Chick, color=Chick))+ geom_line(data=thing1, aes(x=Time, y=ave))
+thing3
+
+
+```
+
+The trajectories are rather simular. It appears however that the mean trajectory is greater than that of the trajectories of the highest and lowest weight chicks.
+
+
+
+8. What else do you find interesting in the dataset? Show your exploratory analysis.
+
+I thought it would be interesting to look at the median weight gain over time. 
+
+```{r}
+weighttime <- complete %>%
+  ggplot(aes(x= reorder(Time, weightgain, FUN=median), y=weightgain)) + geom_boxplot() + xlab('Time') + ylab('WeightGain')+ ggtitle('WeightGain by Time') + coord_cartesian(ylim = c(0, 350))
+
+weighttime
+```
+
+
+When all of the weight gains are plotting with time, there are several visable outliers. There occurs some on time 2, 12, and 16. This graph displays a good visual on the increase in weightgain over the course of the study. 
+
+
+Note: your submission is supposed to be fully reproducible, i.e. the TA and I will 'knit' your submission in RStudio. 
